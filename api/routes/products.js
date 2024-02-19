@@ -8,17 +8,29 @@ const storage = multer.diskStorage({
     cb(null, "./uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, new Date().toISOString() + file.originalname);
+    cb(null, new Date().toISOString() + "_" + file.originalname);
   },
 });
 
-const upload = multer({ storage: storage });
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
+    cb(null, true);
+  } else cb(null, false);
+};
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 1024 * 1024 * 5,
+  },
+  fileFilter: fileFilter,
+});
 
 const Product = require("../models/product");
 
 router.get("/", (req, res, next) => {
   Product.find()
-    .select("_id name price")
+    .select("_id name price productImage")
     .exec()
     .then((docs) => {
       const response = {
@@ -27,6 +39,7 @@ router.get("/", (req, res, next) => {
           return {
             name: doc.name,
             price: doc.price,
+            productImage: doc.productImage,
             _id: doc._id,
             request: {
               type: "GET",
@@ -51,6 +64,7 @@ router.post("/", upload.single("productImage"), (req, res, next) => {
     _id: new mongoose.Types.ObjectId(),
     name: req.body.name,
     price: req.body.price,
+    productImage: req.file.path,
   });
   product
     .save()
